@@ -51,7 +51,7 @@
 #define APP_MU_IRQ_PRIORITY 3
 
 /* Globals */
-static char app_buf[512]; /* Each RPMSG buffer can carry less than 512 payload */
+static char buffer[512]; /* Each RPMSG buffer can carry less than 512 payload */
 static bool gpioValue = false;
 
 static void GPIO_Ctrl_InitRL1Pin(void)
@@ -101,24 +101,6 @@ static void GPIO_RL2_Toggle(bool value)
 }
 
 /*!
- * @brief Read GPIO RL1
- */
-static bool readRL1(void)
-{
-    return gpioValue = GPIO_ReadPinInput(BOARD_GPIO_RL1_CONFIG->base, 
-    					 BOARD_GPIO_RL1_CONFIG->pin);
-}
-
-/*!
- * @brief Read GPIO RL2
- */
-static bool readRL2(void)
-{
-    return gpioValue = GPIO_ReadPinInput(BOARD_GPIO_RL2_CONFIG->base, 
-    					 BOARD_GPIO_RL2_CONFIG->pin);
-}
-
-/*!
  * @brief A basic RPMSG task
  */
 static void commandTask(void *pvParameters)
@@ -133,12 +115,12 @@ static void commandTask(void *pvParameters)
     unsigned long size;
     char command[20];
     int wantedValue;
+    int isValid;
 
     /* Print the initial banner */
     PRINTF("\r\nRelay Click Demo with Cortex M4\r\n");
 
     /* RPMSG Init as REMOTE */
-    PRINTF("RPMSG Init as Remote\r\n");
     result = rpmsg_rtos_init(0, &rdev, RPMSG_MASTER, &app_chnl);
     assert(result == 0);
 
@@ -151,39 +133,52 @@ static void commandTask(void *pvParameters)
         assert(result == 0);
 
         /* Copy string from RPMsg rx buffer */
-        assert(len < sizeof(app_buf));
-        memcpy(app_buf, rx_buf, len);
-        app_buf[len] = 0; /* End string by '\0' */
+        assert(len < sizeof(buffer));
+        memcpy(buffer, rx_buf, len);
+        /* End string by '\0' */
+        buffer[len] = 0; 
 
-        if ((len == 2) && (app_buf[0] == 0xd) && (app_buf[1] == 0xa))
-            PRINTF("Get New Line From Master Side\r\n");
+        if ((len == 2) && (buffer[0] == 0xd) && (buffer[1] == 0xa))
+            PRINTF("Received but not handled\r\n");
         else
-        {        	
-        	// Get Arg
-		sscanf(app_buf, "!%[^:\n]:%d", command, &wantedValue);
-		
+        {
+        	PRINTF("Get Message From Master Side : \"%s\" [len : %d]\r\n", buffer, len);
+        	
+        	/* Force isValid to false */
+        	isValid=false;
+        	
+        	/* Get Arg from remote */
+		sscanf(buffer, "!%[^:\n]:%d", command, &wantedValue);
+
+		/* Check if command is valid */
 		if (0 == strcmp(command, "out_RL1")) {
-			PRINTF("RL1\n");
 			GPIO_RL1_Toggle(wantedValue);
-		}
-		if (0 == strcmp(command, "out_RL2")) {
-			PRINTF("RL2\n");
+			isValid=true;
+		} else if (0 == strcmp(command, "out_RL2")) {
 			GPIO_RL2_Toggle(wantedValue);
+			isValid=true;
+		} 
+		else isValid=false;
+		
+		/* Update Buffer */
+		if (isValid) {			
+			len = snprintf(buffer, sizeof(buffer), "%s:ok\n", command);
+		} else {
+			len = snprintf(buffer, sizeof(buffer), "%s:error\n", command);
 		}
         }
-
-        /* Get tx buffer from RPMsg */
-        tx_buf = rpmsg_rtos_alloc_tx_buffer(app_chnl->rp_ept, &size);
-        assert(tx_buf);
-        /* Copy string to RPMsg tx buffer */
-        memcpy(tx_buf, app_buf, len);
-        /* Echo back received message with nocopy send */
-        result = rpmsg_rtos_send_nocopy(app_chnl->rp_ept, tx_buf, len, src);
-        assert(result == 0);
-
+        
+        /* Allocates the tx buffer for message payload */
+	tx_buf = rpmsg_rtos_alloc_tx_buffer(app_chnl->rp_ept, &size);
+	assert(tx_buf);		
+	/* Copy string to RPMsg tx buffer */
+	memcpy(tx_buf, buffer, len);
+	/* Send buffer to Cortex A7 */
+	result = rpmsg_rtos_send_nocopy(app_chnl->rp_ept, tx_buf, len, src);
+	assert(result == 0);	
         /* Release held RPMsg rx buffer */
-        result = rpmsg_rtos_recv_nocopy_free(app_chnl->rp_ept, rx_buf);
-        assert(result == 0);
+	result = rpmsg_rtos_recv_nocopy_free(app_chnl->rp_ept, rx_buf);
+	assert(result == 0);
     }
 }
 
@@ -202,8 +197,8 @@ int main(void)
 {
     hardware_init();
     
-    GPIO_Ctrl_InitRL1Pin();	// RL1
-    GPIO_Ctrl_InitRL2Pin();	// RL2
+    GPIO_Ctrl_InitRL1Pin();	// Init RL1
+    GPIO_Ctrl_InitRL2Pin();	// Init RL2
 
     /*
      * Prepare for the MU Interrupt
@@ -213,7 +208,7 @@ int main(void)
     NVIC_SetPriority(BOARD_MU_IRQ_NUM, APP_MU_IRQ_PRIORITY);
     NVIC_EnableIRQ(BOARD_MU_IRQ_NUM);
 
-    /* Create a demo task. */
+    /* Create a Command task. */
     xTaskCreate(commandTask, "Command Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL);
 
     /* Start FreeRTOS scheduler. */
