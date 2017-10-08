@@ -162,12 +162,12 @@ static void commandTask(void *pvParameters)
         	// Get Arg
 		sscanf(app_buf, "!%[^:\n]:%d", command, &wantedValue);
 		
-		if (0 == strcmp(command, "out_RL1\n")) {
-			PRINTF("RL1");
+		if (0 == strcmp(command, "out_RL1")) {
+			PRINTF("RL1\n");
 			GPIO_RL1_Toggle(wantedValue);
 		}
-		if (0 == strcmp(command, "out_RL2\n")) {
-			PRINTF("RL2");
+		if (0 == strcmp(command, "out_RL2")) {
+			PRINTF("RL2\n");
 			GPIO_RL2_Toggle(wantedValue);
 		}
         }
