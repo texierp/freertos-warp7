@@ -31,38 +31,28 @@
 #include <assert.h>
 #include "gpio_pins.h"
 
-gpio_config_t gpioLed = {
-    "USER LED",                         /* name */
-    &IOMUXC_SW_MUX_CTL_PAD_GPIO1_IO09,  /* muxReg */
-    0,                                  /* muxConfig */
-    &IOMUXC_SW_PAD_CTL_PAD_GPIO1_IO09,  /* padReg */
-    0,                                  /* padConfig */
-    GPIO1,                              /* base */
-    9                                   /* pin */
+gpio_config_t gpioRL1 = {
+    "out_RL1",                                       	/* name */
+    &IOMUXC_SW_MUX_CTL_PAD_ENET1_RGMII_TD2,             /* muxReg */
+    5,                                              	/* muxConfig */
+    &IOMUXC_SW_PAD_CTL_PAD_ENET1_RGMII_TD2,             /* padReg */
+    IOMUXC_SW_PAD_CTL_PAD_ENET1_RGMII_TD2_PS(2) |       /* padConfig */
+    IOMUXC_SW_PAD_CTL_PAD_ENET1_RGMII_TD2_PE_MASK |
+    IOMUXC_SW_PAD_CTL_PAD_ENET1_RGMII_TD2_HYS_MASK,
+    GPIO7,                                          	/* base */
+    8                                               	/* pin */
 };
 
-gpio_config_t gpioKeyVolUp = {
-    "VOLUME UP",                                    /* name */
-    &IOMUXC_SW_MUX_CTL_PAD_GPIO1_IO14,              /* muxReg */
-    0,                                              /* muxConfig */
-    &IOMUXC_SW_PAD_CTL_PAD_GPIO1_IO14,              /* padReg */
-    IOMUXC_SW_PAD_CTL_PAD_GPIO1_IO14_PS(2) |        /* padConfig */
-        IOMUXC_SW_PAD_CTL_PAD_GPIO1_IO14_PE_MASK |
-	IOMUXC_SW_PAD_CTL_PAD_GPIO1_IO14_HYS_MASK,
-    GPIO1,                                          /* base */
-    14                                              /* pin */
-};
-
-gpio_config_t gpioKeyVolDown = {
-    "VOLUME DOWN",                                  /* name */
-    &IOMUXC_SW_MUX_CTL_PAD_GPIO1_IO15,              /* muxReg */
-    0,                                              /* muxConfig */
-    &IOMUXC_SW_PAD_CTL_PAD_GPIO1_IO15,              /* padReg */
-    IOMUXC_SW_PAD_CTL_PAD_GPIO1_IO15_PS(2) |        /* padConfig */
-        IOMUXC_SW_PAD_CTL_PAD_GPIO1_IO15_PE_MASK |
-	IOMUXC_SW_PAD_CTL_PAD_GPIO1_IO15_HYS_MASK,
-    GPIO1,                                          /* base */
-    15                                              /* pin */
+gpio_config_t gpioRL2 = {
+    "out_RL2",                                       	/* name */
+    &IOMUXC_SW_MUX_CTL_PAD_ECSPI2_SS0,          	/* muxReg */
+    5,                                               	/* muxConfig */
+    &IOMUXC_SW_PAD_CTL_PAD_ECSPI2_SS0,          	/* padReg */
+    IOMUXC_SW_PAD_CTL_PAD_ECSPI2_SS0_PS(2) |    	/* padConfig */
+    IOMUXC_SW_PAD_CTL_PAD_ECSPI2_SS0_PE_MASK |
+    IOMUXC_SW_PAD_CTL_PAD_ECSPI2_SS0_HYS_MASK,
+    GPIO4,                                           	/* base */
+    23                                               	/* pin */
 };
 
 void configure_gpio_pin(gpio_config_t *config)

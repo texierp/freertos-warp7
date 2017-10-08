@@ -50,9 +50,8 @@ extern "C" {
 #endif /* __cplusplus */
 
 /*! @brief GPIO pin configuration */
-extern gpio_config_t gpioLed;
-extern gpio_config_t gpioKeyVolUp;
-extern gpio_config_t gpioKeyVolDown;
+extern gpio_config_t gpioRL1;
+extern gpio_config_t gpioRL2;
 
 /*! @brief Configure specific GPIO pin */
 void configure_gpio_pin(gpio_config_t *config);
