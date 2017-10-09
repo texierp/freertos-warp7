@@ -38,7 +38,7 @@
 #include "debug_console_imx.h"
 #include "gpio_imx.h"
 #include "gpio_pins.h"
-
+#include "rdc_semaphore.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
@@ -63,7 +63,9 @@ static void GPIO_Ctrl_InitRL1Pin(void)
         .direction = gpioDigitalOutput,
         .interruptMode = gpioNoIntmode
     };
+    RDC_SEMAPHORE_Lock(BOARD_GPIO_RL1_RDC_PDAP);
     GPIO_Init(BOARD_GPIO_RL1_CONFIG->base, &RL1InitConfig);
+    RDC_SEMAPHORE_Unlock(BOARD_GPIO_RL1_RDC_PDAP);
 #endif
 }
 
@@ -77,7 +79,9 @@ static void GPIO_Ctrl_InitRL2Pin(void)
         .direction = gpioDigitalOutput,
         .interruptMode = gpioNoIntmode
     };
+    RDC_SEMAPHORE_Lock(BOARD_GPIO_RL2_RDC_PDAP);
     GPIO_Init(BOARD_GPIO_RL2_CONFIG->base, &RL2InitConfig);
+    RDC_SEMAPHORE_Unlock(BOARD_GPIO_RL2_RDC_PDAP);
 #endif
 }
 
@@ -86,10 +90,13 @@ static void GPIO_Ctrl_InitRL2Pin(void)
  */
 static void GPIO_RL1_Toggle(bool value)
 {
-
+#ifdef BOARD_GPIO_RL1_CONFIG
+    RDC_SEMAPHORE_Lock(BOARD_GPIO_RL1_RDC_PDAP);
     GPIO_WritePinOutput(BOARD_GPIO_RL1_CONFIG->base,
     			BOARD_GPIO_RL1_CONFIG->pin, 
     			value);
+    RDC_SEMAPHORE_Unlock(BOARD_GPIO_RL1_RDC_PDAP);
+#endif
 }
 
 /*!
@@ -97,10 +104,13 @@ static void GPIO_RL1_Toggle(bool value)
  */
 static void GPIO_RL2_Toggle(bool value)
 {
-
+#ifdef BOARD_GPIO_RL2_CONFIG
+    RDC_SEMAPHORE_Lock(BOARD_GPIO_RL2_RDC_PDAP);	
     GPIO_WritePinOutput(BOARD_GPIO_RL2_CONFIG->base,
     			BOARD_GPIO_RL2_CONFIG->pin, 
     			value);
+    RDC_SEMAPHORE_Unlock(BOARD_GPIO_RL2_RDC_PDAP);
+#endif
 }
 
 /*!
