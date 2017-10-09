@@ -52,7 +52,6 @@
 
 /* Globals */
 static char buffer[512]; /* Each RPMSG buffer can carry less than 512 payload */
-static bool gpioValue = false;
 
 static void GPIO_Ctrl_InitRL1Pin(void)
 {
