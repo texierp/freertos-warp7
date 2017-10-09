@@ -56,6 +56,7 @@ static bool gpioValue = false;
 
 static void GPIO_Ctrl_InitRL1Pin(void)
 {
+#ifdef BOARD_GPIO_RL1_CONFIG
     /* GPIO module initialize, configure "RL1" as output and drive the output level high */
     gpio_init_config_t RL1InitConfig = 
     {
@@ -64,10 +65,12 @@ static void GPIO_Ctrl_InitRL1Pin(void)
         .interruptMode = gpioNoIntmode
     };
     GPIO_Init(BOARD_GPIO_RL1_CONFIG->base, &RL1InitConfig);
+#endif
 }
 
 static void GPIO_Ctrl_InitRL2Pin(void)
 {
+#ifdef BOARD_GPIO_RL2_CONFIG
     /* GPIO module initialize, configure "RL2" as output and drive the output level high */
     gpio_init_config_t RL2InitConfig = 
     {
@@ -76,6 +79,7 @@ static void GPIO_Ctrl_InitRL2Pin(void)
         .interruptMode = gpioNoIntmode
     };
     GPIO_Init(BOARD_GPIO_RL2_CONFIG->base, &RL2InitConfig);
+#endif
 }
 
 /*!
