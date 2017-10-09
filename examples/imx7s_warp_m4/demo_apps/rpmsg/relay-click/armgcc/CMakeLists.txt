@@ -99,6 +99,8 @@ ADD_EXECUTABLE(relay-click
     "${ProjDirPath}/../../../../../../rtos/FreeRTOS/Source/portable/MemMang/heap_2.c"
     "${ProjDirPath}/../FreeRTOSConfig.h"
     "${ProjDirPath}/../relay-click.c"
+    "${ProjDirPath}/../../../../../../platform/drivers/src/rdc_semaphore.c"
+    "${ProjDirPath}/../../../../../../platform/drivers/inc/rdc_semaphore.h"
     "${ProjDirPath}/../../../../../../middleware/multicore/open-amp/rpmsg/rpmsg_rtos.h"
     "${ProjDirPath}/../../../../../../middleware/multicore/open-amp/porting/imx7d_m4/platform.h"
     "${ProjDirPath}/../../../../../../middleware/multicore/open-amp/porting/imx7d_m4/rpmsg_platform_porting.h"
