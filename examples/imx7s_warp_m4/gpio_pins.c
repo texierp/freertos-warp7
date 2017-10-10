@@ -55,6 +55,18 @@ gpio_config_t gpioRL2 = {
     23                                               	/* pin */
 };
 
+gpio_config_t gpioINT = {
+    "in_INT",                                       	/* name */
+    &IOMUXC_SW_MUX_CTL_PAD_ENET1_RGMII_TD1,             /* muxReg */
+    5,                                              	/* muxConfig */
+    &IOMUXC_SW_PAD_CTL_PAD_ENET1_RGMII_TD1,             /* padReg */
+    IOMUXC_SW_PAD_CTL_PAD_ENET1_RGMII_TD1_PS(2) |       /* padConfig */
+    IOMUXC_SW_PAD_CTL_PAD_ENET1_RGMII_TD1_PE_MASK |
+    IOMUXC_SW_PAD_CTL_PAD_ENET1_RGMII_TD1_HYS_MASK,
+    GPIO7,                                          	/* base */
+    7                                               	/* pin */
+};
+
 void configure_gpio_pin(gpio_config_t *config)
 {
     assert(config);

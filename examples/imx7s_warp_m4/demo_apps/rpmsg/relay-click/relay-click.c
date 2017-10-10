@@ -52,6 +52,7 @@
 
 /* Globals */
 static char buffer[512]; /* Each RPMSG buffer can carry less than 512 payload */
+static bool gpioValue = false;
 
 static void GPIO_Ctrl_InitRL1Pin(void)
 {
@@ -85,6 +86,22 @@ static void GPIO_Ctrl_InitRL2Pin(void)
 #endif
 }
 
+static void GPIO_Ctrl_InitINTPin(void)
+{
+#ifdef BOARD_GPIO_INT_CONFIG
+    	/* GPIO module initialize, configure "INT" as input and drive the output level high */
+    	gpio_init_config_t INTInitConfig = 
+    	{
+        	.pin = BOARD_GPIO_INT_CONFIG->pin,
+        	.direction = gpioDigitalInput,
+        	.interruptMode = gpioNoIntmode
+    	};
+    	RDC_SEMAPHORE_Lock(BOARD_GPIO_INT_RDC_PDAP);
+    	GPIO_Init(BOARD_GPIO_INT_CONFIG->base, &INTInitConfig);
+    	RDC_SEMAPHORE_Unlock(BOARD_GPIO_INT_RDC_PDAP);
+#endif
+}
+
 /*!
  * @brief Toggle RL1
  */
@@ -113,12 +130,23 @@ static void GPIO_RL2_Toggle(bool value)
 #endif
 }
 
+static bool readINT(void)
+{
+#ifdef BOARD_GPIO_INT_CONFIG
+	RDC_SEMAPHORE_Lock(BOARD_GPIO_INT_RDC_PDAP);
+	gpioValue = GPIO_ReadPinInput(BOARD_GPIO_INT_CONFIG->base, 
+    					 BOARD_GPIO_INT_CONFIG->pin);
+	RDC_SEMAPHORE_Unlock(BOARD_GPIO_INT_RDC_PDAP);
+#endif
+    	return gpioValue; 
+}
+
 static void heartBeatTask(void *pvParameters)
 {
 	const TickType_t xDelay = 500 / portTICK_PERIOD_MS;	
 	for (;;)
      	{
-		PRINTF("heartBeatTask ... Do processing here ...\n");
+		PRINTF("Flame Click Interrrupt: %d\n", readINT());
 		vTaskDelay( xDelay );
      	}
 }
@@ -221,6 +249,7 @@ int main(void)
     
    	GPIO_Ctrl_InitRL1Pin();	// Init RL1
     	GPIO_Ctrl_InitRL2Pin();	// Init RL2
+    	GPIO_Ctrl_InitINTPin();	// Init INT
 
     	/*
      	* Prepare for the MU Interrupt

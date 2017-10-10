@@ -88,6 +88,10 @@
 #define BOARD_GPIO_RL2_RDC_PDAP              rdcPdapGpio4
 #define BOARD_GPIO_RL2_CONFIG                (&gpioRL2)
 
+#define BOARD_GPIO_INT_CCM_CCGR              ccmCcgrGateGpio7
+#define BOARD_GPIO_INT_RDC_PDAP              rdcPdapGpio7
+#define BOARD_GPIO_INT_CONFIG                (&gpioINT)
+
 /* Debug UART information for this board */
 #define BOARD_DEBUG_UART_RDC_PDAP             rdcPdapUart2
 #define BOARD_DEBUG_UART_CCM_ROOT             ccmRootUart2
@@ -110,7 +114,6 @@
 #define BOARD_I2C_BASEADDR                    I2C4
 #define BOARD_I2C_IRQ_NUM                     I2C4_IRQn
 #define BOARD_I2C_HANDLER                     I2C4_Handler
-#define BOARD_I2C_MPL3115_ADDR                (0x60)
 
 /* ECSPI information for flash demo */                 
 #define BOARD_ECSPI_RDC_PDAP                  rdcPdapEcspi1

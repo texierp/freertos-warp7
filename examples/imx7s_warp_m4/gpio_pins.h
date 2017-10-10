@@ -52,6 +52,7 @@ extern "C" {
 /*! @brief GPIO pin configuration */
 extern gpio_config_t gpioRL1;
 extern gpio_config_t gpioRL2;
+extern gpio_config_t gpioINT;
 
 /*! @brief Configure specific GPIO pin */
 void configure_gpio_pin(gpio_config_t *config);

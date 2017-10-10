@@ -66,6 +66,15 @@ void hardware_init(void)
     /* Configure gpio pin IOMUX */
 
     configure_gpio_pin(BOARD_GPIO_RL2_CONFIG); 
+    
+    /* In this demo, we need to share board GPIO without RDC SEMAPHORE */
+    RDC_SetPdapAccess(RDC, BOARD_GPIO_INT_RDC_PDAP, 0xFF, false, false);
+
+    /* Enable gpio clock gate */
+    CCM_ControlGate(CCM, BOARD_GPIO_INT_CCM_CCGR, ccmClockNeededRunWait);
+    /* Configure gpio pin IOMUX */
+
+    configure_gpio_pin(BOARD_GPIO_INT_CONFIG); 
 }
 
 /*******************************************************************************
