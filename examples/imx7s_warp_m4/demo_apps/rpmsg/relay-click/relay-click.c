@@ -39,7 +39,7 @@
 #include "rdc_semaphore.h"
 #include "gpio_imx.h"
 #include "gpio_pins.h"
-
+#include "queue.h"
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,7 +89,7 @@ static void GPIO_Ctrl_InitRL2Pin(void)
 static void GPIO_Ctrl_InitINTPin(void)
 {
 #ifdef BOARD_GPIO_INT_CONFIG
-    	/* GPIO module initialize, configure "INT" as input and drive the output level high */
+    	/* GPIO module initialize, configure "INT" as input */
     	gpio_init_config_t INTInitConfig = 
     	{
         	.pin = BOARD_GPIO_INT_CONFIG->pin,
@@ -141,13 +141,29 @@ static bool readINT(void)
     	return gpioValue; 
 }
 
+QueueHandle_t xQueue = 0;
+static void producerTask(void *pvParameters)
+{
+	uint8_t queueValue = 0;
+	for (;;)
+	{	
+		queueValue = readINT();
+		if (!xQueueSend(xQueue, &queueValue, 500)) {
+        		PRINTF("Failed to send item to queue ...\n");
+        	}
+        	vTaskDelay(300);
+     	}
+}
+
 static void heartBeatTask(void *pvParameters)
 {
-	const TickType_t xDelay = 500 / portTICK_PERIOD_MS;	
+	uint8_t queueValue = 0;
 	for (;;)
      	{
-		PRINTF("Flame Click Interrrupt: %d\n", readINT());
-		vTaskDelay( xDelay );
+     		if (!xQueueReceive(xQueue, &queueValue, 1000)) {
+        		PRINTF("Failed to receive item ...\n");
+        	}
+		PRINTF("Flame Click Interrrupt: %d\n", queueValue);
      	}
 }
 
@@ -250,7 +266,11 @@ int main(void)
    	GPIO_Ctrl_InitRL1Pin();	// Init RL1
     	GPIO_Ctrl_InitRL2Pin();	// Init RL2
     	GPIO_Ctrl_InitINTPin();	// Init INT
-
+    	
+    	// Queue Creation
+    	xQueue = xQueueCreate(1, sizeof(uint8_t));
+    	
+    	if(xQueue == NULL) goto err;
     	/*
      	* Prepare for the MU Interrupt
      	*  MU must be initialized before rpmsg init is called
@@ -260,14 +280,24 @@ int main(void)
     	NVIC_EnableIRQ(BOARD_MU_IRQ_NUM);
 
     	/* Create a Command task. */
-    	xTaskCreate(commandTask, "Command Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL);
-    	xTaskCreate(heartBeatTask, "Heartbeat Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, NULL);
-
-	PRINTF("\r\n== Relay Click Demo with Cortex M4 ==\r\n");
+    	if (!(pdPASS == xTaskCreate(commandTask, "Command Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL)))
+    		goto err;
+    		 	
+    	/* Create a Producer task. */
+	if (!(pdPASS == xTaskCreate(producerTask, "Producer Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, NULL)))
+		goto err;
+	
+	/* Create a Heartbeat task. */	 
+    	if (!(pdPASS == xTaskCreate(heartBeatTask, "Heartbeat Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+3, NULL)))
+    		goto err;
+	
+	PRINTF("\r\n== Relay Click Demo ==\r\n");
 	
     	/* Start FreeRTOS scheduler. */
     	vTaskStartScheduler();
-
+    	
+err:
+	PRINTF("Error ...\n");
     	/* Should never reach this point. */
     	while (true);
 }
