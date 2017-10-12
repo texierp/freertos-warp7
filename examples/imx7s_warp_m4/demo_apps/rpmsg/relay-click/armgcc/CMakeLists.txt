@@ -73,9 +73,12 @@ IF(CMAKE_BUILD_TYPE MATCHES Debug)
     INCLUDE_DIRECTORIES(${ProjDirPath}/..)
     INCLUDE_DIRECTORIES(${ProjDirPath}/../../../../../../middleware/multicore/open-amp/porting/imx7d_m4)
     INCLUDE_DIRECTORIES(${ProjDirPath}/../../../../../../middleware/multicore/open-amp/porting/env/freertos)
+    INCLUDE_DIRECTORIES(${ProjDirPath}/../../..)
+    INCLUDE_DIRECTORIES(${ProjDirPath}/../common)
 ELSEIF(CMAKE_BUILD_TYPE MATCHES Release)
     INCLUDE_DIRECTORIES(${ProjDirPath}/../../../..)
-    INCLUDE_DIRECTORIES(${ProjDirPath}/..)
+    INCLUDE_DIRECTORIES(${ProjDirPath}/../../..)
+    INCLUDE_DIRECTORIES(${ProjDirPath}/../common)
     INCLUDE_DIRECTORIES(${ProjDirPath}/../../../../../../rtos/FreeRTOS/Source/portable/GCC/ARM_CM4F)
     INCLUDE_DIRECTORIES(${ProjDirPath}/../../../../../../platform/CMSIS/Include)
     INCLUDE_DIRECTORIES(${ProjDirPath}/../../../../../../platform/devices)
@@ -97,8 +100,14 @@ ADD_EXECUTABLE(relay-click
     "${ProjDirPath}/../../../../../../rtos/FreeRTOS/Source/portable/GCC/ARM_CM4F/portmacro.h"
     "${ProjDirPath}/../../../../../../platform/devices/MCIMX7D/startup/gcc/startup_MCIMX7D_M4.S"
     "${ProjDirPath}/../../../../../../rtos/FreeRTOS/Source/portable/MemMang/heap_2.c"
-    "${ProjDirPath}/../FreeRTOSConfig.h"
     "${ProjDirPath}/../relay-click.c"
+    "${ProjDirPath}/../FreeRTOSConfig.h"
+    "${ProjDirPath}/../common/i2c_xfer.c"
+    "${ProjDirPath}/../common/i2c_xfer.h"
+    "${ProjDirPath}/../common/max30101.c"
+    "${ProjDirPath}/../common/max30101.h"   
+    "${ProjDirPath}/../common/eeprom.c"
+    "${ProjDirPath}/../common/eeprom.h"   
     "${ProjDirPath}/../../../../../../platform/drivers/src/rdc_semaphore.c"
     "${ProjDirPath}/../../../../../../platform/drivers/inc/rdc_semaphore.h"
     "${ProjDirPath}/../../../../../../middleware/multicore/open-amp/rpmsg/rpmsg_rtos.h"
@@ -178,6 +187,8 @@ ADD_EXECUTABLE(relay-click
     "${ProjDirPath}/../../../../../../platform/drivers/inc/uart_imx.h"
     "${ProjDirPath}/../../../../../../platform/drivers/src/gpio_imx.c"
     "${ProjDirPath}/../../../../../../platform/drivers/inc/gpio_imx.h"
+    "${ProjDirPath}/../../../../../../platform/drivers/src/i2c_imx.c"
+    "${ProjDirPath}/../../../../../../platform/drivers/inc/i2c_imx.h"
     "${ProjDirPath}/../../../../../../platform/drivers/src/mu_imx.c"
     "${ProjDirPath}/../../../../../../platform/drivers/inc/mu_imx.h"
 )

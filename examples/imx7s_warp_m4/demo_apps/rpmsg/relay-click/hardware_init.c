@@ -75,6 +75,18 @@ void hardware_init(void)
     /* Configure gpio pin IOMUX */
 
     configure_gpio_pin(BOARD_GPIO_INT_CONFIG); 
+    
+    /* In this example, we need to grasp board I2C exclusively */
+    RDC_SetPdapAccess(RDC, BOARD_I2C_RDC_PDAP, 3 << (BOARD_DOMAIN_ID * 2), false, false);
+
+    /* Select I2C clock derived from OSC clock(24M) */
+    CCM_UpdateRoot(CCM, BOARD_I2C_CCM_ROOT, ccmRootmuxI2cOsc24m, 0, 0);
+    /* Enable I2C clock */
+    CCM_EnableRoot(CCM, BOARD_I2C_CCM_ROOT);
+    CCM_ControlGate(CCM, BOARD_I2C_CCM_CCGR, ccmClockNeededRunWait);
+
+    /* I2C Pin setting */
+    configure_i2c_pins(BOARD_I2C_BASEADDR);
 }
 
 /*******************************************************************************
