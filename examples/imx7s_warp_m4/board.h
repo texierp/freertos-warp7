@@ -86,7 +86,7 @@
 
 #define BOARD_GPIO_LED_CCM_CCGR              ccmCcgrGateGpio7
 #define BOARD_GPIO_LED_RDC_PDAP              rdcPdapGpio7
-#define BOARD_GPIO_LED_CONFIG                (&gpioINT)
+#define BOARD_GPIO_LED_CONFIG                (&gpioLED)
 
 #define BOARD_GPIO_RL2_CCM_CCGR		     ccmCcgrGateGpio4
 #define BOARD_GPIO_RL2_RDC_PDAP              rdcPdapGpio4
