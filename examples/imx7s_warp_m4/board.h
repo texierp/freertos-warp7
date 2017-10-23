@@ -108,12 +108,12 @@
 #define BOARD_MU_RDC_PDAP                     rdcPdapMuB
 
 /* I2C information for this board */
-#define BOARD_I2C_RDC_PDAP                    rdcPdapI2c4
-#define BOARD_I2C_CCM_ROOT                    ccmRootI2c4
-#define BOARD_I2C_CCM_CCGR                    ccmCcgrGateI2c4
-#define BOARD_I2C_BASEADDR                    I2C4
-#define BOARD_I2C_IRQ_NUM                     I2C4_IRQn
-#define BOARD_I2C_HANDLER                     I2C4_Handler
+#define BOARD_I2C_RDC_PDAP                    rdcPdapI2c3
+#define BOARD_I2C_CCM_ROOT                    ccmRootI2c3
+#define BOARD_I2C_CCM_CCGR                    ccmCcgrGateI2c3
+#define BOARD_I2C_BASEADDR                    I2C3
+#define BOARD_I2C_IRQ_NUM                     I2C3_IRQn
+#define BOARD_I2C_HANDLER                     I2C3_Handler
 
 /* ECSPI information for flash demo */                 
 #define BOARD_ECSPI_RDC_PDAP                  rdcPdapEcspi1
