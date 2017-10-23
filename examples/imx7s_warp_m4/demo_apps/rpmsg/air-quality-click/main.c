@@ -79,14 +79,14 @@ static void GPIO_Ctrl_InitLEDPin(void)
 
 
 /*!
- * @brief Toggle RL1
+ * @brief Toggle LED
  */
 static void GPIO_LED_Toggle(bool value)
 {
 #ifdef BOARD_GPIO_LED_CONFIG
     	RDC_SEMAPHORE_Lock(BOARD_GPIO_LED_RDC_PDAP);
     	GPIO_WritePinOutput(BOARD_GPIO_LED_CONFIG->base,
-    				BOARD_GPIO_RL1_CONFIG->pin, 
+    				BOARD_GPIO_LED_CONFIG->pin, 
     				value);
     	RDC_SEMAPHORE_Unlock(BOARD_GPIO_LED_RDC_PDAP);
 #endif
