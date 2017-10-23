@@ -43,18 +43,6 @@ gpio_config_t gpioRL1 = {
     8                                               	/* pin */
 };
 
-gpio_config_t gpioLED = {
-    "out_LED",                                       	/* name */
-    &IOMUXC_SW_MUX_CTL_PAD_ENET1_RGMII_TD2,             /* muxReg */
-    5,                                              	/* muxConfig */
-    &IOMUXC_SW_PAD_CTL_PAD_ENET1_RGMII_TD2,             /* padReg */
-    IOMUXC_SW_PAD_CTL_PAD_ENET1_RGMII_TD2_PS(2) |       /* padConfig */
-    IOMUXC_SW_PAD_CTL_PAD_ENET1_RGMII_TD2_PE_MASK |
-    IOMUXC_SW_PAD_CTL_PAD_ENET1_RGMII_TD2_HYS_MASK,
-    GPIO7,                                          	/* base */
-    8                                               	/* pin */
-};
-
 gpio_config_t gpioRL2 = {
     "out_RL2",                                       	/* name */
     &IOMUXC_SW_MUX_CTL_PAD_ECSPI2_SS0,          	/* muxReg */

@@ -51,7 +51,6 @@ extern "C" {
 
 /*! @brief GPIO pin configuration */
 extern gpio_config_t gpioRL1;
-extern gpio_config_t gpioLED;
 extern gpio_config_t gpioRL2;
 extern gpio_config_t gpioINT;
 
