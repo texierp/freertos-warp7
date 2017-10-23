@@ -92,6 +92,10 @@
 #define BOARD_GPIO_INT_RDC_PDAP              rdcPdapGpio7
 #define BOARD_GPIO_INT_CONFIG                (&gpioINT)
 
+#define BOARD_GPIO_LED_CCM_CCGR              ccmCcgrGateGpio7
+#define BOARD_GPIO_LED_RDC_PDAP              rdcPdapGpio7
+#define BOARD_GPIO_LED_CONFIG                (&gpioLED)
+
 /* Debug UART information for this board */
 #define BOARD_DEBUG_UART_RDC_PDAP             rdcPdapUart2
 #define BOARD_DEBUG_UART_CCM_ROOT             ccmRootUart2
