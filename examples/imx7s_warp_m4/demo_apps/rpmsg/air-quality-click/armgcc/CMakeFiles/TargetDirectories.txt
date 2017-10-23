@@ -1,1 +1,0 @@
-/home/pjtexier/Bureau/freertos-warp7/examples/imx7s_warp_m4/demo_apps/rpmsg/air-quality-click/armgcc/CMakeFiles/main.dir
