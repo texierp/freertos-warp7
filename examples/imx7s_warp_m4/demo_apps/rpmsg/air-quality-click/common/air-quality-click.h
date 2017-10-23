@@ -28,37 +28,42 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GPIO_PINS_H__
-#define __GPIO_PINS_H__
 
-#include "device_imx.h"
+#include "board.h"
+#include "debug_console_imx.h"
+#include "i2c_imx.h"
 
-/*! @brief i.MX GPIO initialize structure. */
-typedef struct _gpio_config
+#define EEPROM_ADDRESS    (0x50)
+
+// Device
+#define IAQCORE_ADDRESS				(0x50)
+#define IAQCORE_DATA_SIZE			9
+// Status codes
+#define IAQCORE_STATUS_OK			(0x00)
+#define IAQCORE_STATUS_RUNIN			(0x10)
+#define IAQCORE_STATUS_BUSY			(0x01)
+#define IAQCORE_STATUS_ERROR			(0x80)
+
+typedef struct _iaq_data
 {
-    const char        *name;
-    __IO  uint32_t    *muxReg;
-    uint32_t           muxConfig;
-    __IO  uint32_t    *padReg;
-    uint32_t           padConfig;
-    GPIO_Type         *base;
-    uint32_t           pin;
-} gpio_config_t;
+    uint8_t 	status;			/*!<  */
+    uint16_t 	CO2prediction;		/*!<  */
+    uint32_t 	resistance;		/*!<  */
+    uint16_t 	TVOCprediction;		/*!<  */
+} iaq_data_t;
 
-#if defined(__cplusplus)
-extern "C" {
-#endif /* __cplusplus */
 
-/*! @brief GPIO pin configuration */
-extern gpio_config_t gpioRL1;
-extern gpio_config_t gpioLED;
-extern gpio_config_t gpioRL2;
-extern gpio_config_t gpioINT;
+bool IAQ_ReadData(iaq_data_t *val);
 
-/*! @brief Configure specific GPIO pin */
-void configure_gpio_pin(gpio_config_t *config);
-
-#endif /* __GPIO_PINS_H__ */
-/*******************************************************************************
- * EOF
- ******************************************************************************/
+bool I2C_MasterSendDataPolling(I2C_Type *base,
+                                      const uint8_t *cmdBuff,
+                                      uint32_t cmdSize,
+                                      const uint8_t *txBuff,
+                                      uint32_t txSize);
+                                      
+bool I2C_MasterReceiveDataPolling(I2C_Type *base,
+                                         const uint8_t *cmdBuff,
+                                         uint32_t cmdSize,
+                                         uint8_t *rxBuff,
+                                         uint32_t rxSize);
+                                                                              
