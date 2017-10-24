@@ -95,8 +95,8 @@ static void GPIO_LED_Toggle(bool value)
 static void heartBeatTask(void *pvParameters)
 {
 	for (;;) {
-     		PRINTF("M4 is Alive\n");
-     		vTaskDelay(300);
+		readFromSensor();
+     		vTaskDelay(1000);
      	}
 }
 
@@ -143,44 +143,47 @@ static void commandTask(void *pvParameters)
         	{
         		PRINTF("Get Message From Master Side : \"%s\" [len : %d]\r\n", buffer, len);
         		
-        		switch (buffer[0]) {
+        		switch (buffer[0]) 
+        		{
         		
-        		case '!':        	
-				/* Force isValid to false */
-				isValid=false;
-			
-				/* Get Arg from remote */
-				sscanf(buffer, "!%[^:\n]:%d", command, &wantedValue);
-
-				/* Check if command is valid */
-				if (0 == strcmp(command, "out_LED")) {
-					GPIO_LED_Toggle(wantedValue);	
-					isValid=true;
-				} 
-				else 
+				case '!':        	
+					/* Force isValid to false */
 					isValid=false;
+			
+					/* Get Arg from remote */
+					sscanf(buffer, "!%[^:\n]:%d", command, &wantedValue);
+
+					/* Check if command is valid */
+					if (0 == strcmp(command, "out_LED")) {
+						GPIO_LED_Toggle(wantedValue);	
+						isValid=true;
+					} 
+					else 
+						isValid=false;
 		
-				/* Update Buffer */
-				if (isValid) {			
-					len = snprintf(buffer, sizeof(buffer), "%s:ok\n", command);
-				} else {
-					len = snprintf(buffer, sizeof(buffer), "%s:error\n", command);
-				}
-				break;
+					/* Update Buffer */
+					if (isValid) {			
+						len = snprintf(buffer, sizeof(buffer), "%s:ok\n", command);
+					} else {
+						len = snprintf(buffer, sizeof(buffer), "%s:error\n", command);
+					}
+					break;
 				
-			case '?':
-				sscanf(buffer, "?%s", command);
-				readFromSensor();
-				if (0 == strcmp(command, "co2")) 
-					len = snprintf(buffer, sizeof(buffer), "%s:%d\n", command, (int)iaqData.CO2prediction);
-				else if (0 == strcmp(command, "tvoc")) 
-					len = snprintf(buffer, sizeof(buffer), "%s:%d\n", command, (int)iaqData.TVOCprediction);
-				else if (0 == strcmp(command, "status")) 
-					len = snprintf(buffer, sizeof(buffer), "%s:%d\n", command, (int)iaqData.status);			
-				break;
-		    	default:
-		        	len = snprintf(buffer, sizeof(buffer), "%s:wrong command\n", command);
-		        	break;
+				case '?':
+					sscanf(buffer, "?%s", command);
+					readFromSensor();
+					if (0 == strcmp(command, "co2")) 
+						len = snprintf(buffer, sizeof(buffer), "%s:%d\n", command, (int)iaqData.CO2prediction);		// CO2 Prediction
+					else if (0 == strcmp(command, "tvoc")) 
+						len = snprintf(buffer, sizeof(buffer), "%s:%d\n", command, (int)iaqData.TVOCprediction);	// TVOC prediction
+					else if (0 == strcmp(command, "status")) 	
+						len = snprintf(buffer, sizeof(buffer), "%s:%d\n", command, (int)iaqData.status);		// Status (RUNNING, BUSY, ...)
+					else
+						len = snprintf(buffer, sizeof(buffer), "%s:error\n", command);					// Error
+					break;
+			    	default:
+					len = snprintf(buffer, sizeof(buffer), "%s:wrong command\n", command);
+					break;
 		        }
         	}
         
@@ -215,7 +218,7 @@ int main(void)
     	
     	// I2c Configuration
     	i2c_init_config_t i2cInitConfig = {
-		.baudRate     = 400000u,
+		.baudRate     = 100000u,
 		.slaveAddress = 0x00
     	};
     	
