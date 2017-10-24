@@ -42,9 +42,7 @@
 #include "queue.h"
 #include "air-quality-click.h"
 
-////////////////////////////////////////////////////////////////////////////////
-// Definitions
-////////////////////////////////////////////////////////////////////////////////
+
 #define APP_TASK_STACK_SIZE 256
 
 /*
@@ -56,24 +54,30 @@
 static char buffer[512]; 	/* Each RPMSG buffer can carry less than 512 payload */
 static iaq_data_t iaqData;	/* iAQ Data structure */
 
+/*!
+ * @brief read data from i2c sensor (iAQ)
+ */
 static void readFromSensor()
 {
 	/* Get Values from sensor */
 	IAQ_ReadData(&iaqData);
 }
 
+/*!
+ * @brief Init GPIO LED
+ */
 static void GPIO_Ctrl_InitLEDPin(void)
 {
 #ifdef BOARD_GPIO_LED_CONFIG
     	/* GPIO module initialize, configure "LED" as output and drive the output level high */
     	gpio_init_config_t LEDInitConfig = 
    	 {
-		.pin = BOARD_GPIO_LED_CONFIG->pin,	// Pin number
-        	.direction = gpioDigitalOutput,		// Pin direction
-        	.interruptMode = gpioNoIntmode		// Pin mode
+		.pin = BOARD_GPIO_LED_CONFIG->pin,		// Pin number
+        	.direction = gpioDigitalOutput,			// Pin direction
+        	.interruptMode = gpioNoIntmode			// Pin mode
     	};
-    	RDC_SEMAPHORE_Lock(BOARD_GPIO_LED_RDC_PDAP);
-    	GPIO_Init(BOARD_GPIO_LED_CONFIG->base, &LEDInitConfig);
+    	RDC_SEMAPHORE_Lock(BOARD_GPIO_LED_RDC_PDAP);		
+    	GPIO_Init(BOARD_GPIO_LED_CONFIG->base, &LEDInitConfig);	// We pass the initialized structure
     	RDC_SEMAPHORE_Unlock(BOARD_GPIO_LED_RDC_PDAP);
 #endif
 }
@@ -86,9 +90,9 @@ static void GPIO_LED_Toggle(bool value)
 {
 #ifdef BOARD_GPIO_LED_CONFIG
     	RDC_SEMAPHORE_Lock(BOARD_GPIO_LED_RDC_PDAP);
-    	GPIO_WritePinOutput(BOARD_GPIO_LED_CONFIG->base,
-    				BOARD_GPIO_LED_CONFIG->pin, 
-    				value);
+    	GPIO_WritePinOutput(BOARD_GPIO_LED_CONFIG->base,	// GPIO bank
+    				BOARD_GPIO_LED_CONFIG->pin, 	// GPIO pin
+    				value);				// Value
     	RDC_SEMAPHORE_Unlock(BOARD_GPIO_LED_RDC_PDAP);
 #endif
 }
@@ -145,13 +149,12 @@ static void commandTask(void *pvParameters)
         		PRINTF("Get Message From Master Side : \"%s\" [len : %d]\r\n", buffer, len);
         		
         		switch (buffer[0]) 
-        		{
-        		
+        		{    		
 				case '!':        	
 					/* Force isValid to false */
 					isValid=false;
 			
-					/* Get Arg from remote */
+					/* Get Arg from Cortex A7 */
 					sscanf(buffer, "!%[^:\n]:%d", command, &wantedValue);
 
 					/* Check if command is valid */
@@ -174,13 +177,13 @@ static void commandTask(void *pvParameters)
 					sscanf(buffer, "?%s", command);
 					readFromSensor();
 					if (0 == strcmp(command, "co2")) 
-						len = snprintf(buffer, sizeof(buffer), "%s:%d\n", command, (int)iaqData.CO2prediction);		// CO2 Prediction
+						len = snprintf(buffer, sizeof(buffer), "%d", (uint16_t)iaqData.CO2prediction);		// CO2 Prediction (ppm)
 					else if (0 == strcmp(command, "tvoc")) 
-						len = snprintf(buffer, sizeof(buffer), "%s:%d\n", command, (int)iaqData.TVOCprediction);	// TVOC prediction
+						len = snprintf(buffer, sizeof(buffer), "%d", (uint16_t)iaqData.TVOCprediction);		// TVOC prediction (ppb)
 					else if (0 == strcmp(command, "status")) 	
-						len = snprintf(buffer, sizeof(buffer), "%s:%d\n", command, (int)iaqData.status);		// Status (RUNNING, BUSY, ...)
+						len = snprintf(buffer, sizeof(buffer), "%d", (uint8_t)iaqData.status);			// Status (RUNNING, BUSY, ...)
 					else
-						len = snprintf(buffer, sizeof(buffer), "%s:error\n", command);					// Error
+						len = snprintf(buffer, sizeof(buffer), "%s:error\n", command);				// Error
 					break;
 			    	default:
 					len = snprintf(buffer, sizeof(buffer), "%s:wrong command\n", command);
@@ -215,9 +218,10 @@ void BOARD_MU_HANDLER(void)
 
 int main(void)
 {
+	/* Init RDC, Clock */
     	hardware_init();
     	
-    	// I2c Configuration
+    	/* Configuration */ 
     	i2c_init_config_t i2cInitConfig = {
 		.baudRate     = 100000u,
 		.slaveAddress = 0x00
@@ -227,7 +231,8 @@ int main(void)
     	I2C_Init(BOARD_I2C_BASEADDR, &i2cInitConfig);
     	I2C_Enable(BOARD_I2C_BASEADDR);
     	
-   	GPIO_Ctrl_InitLEDPin();	// Init GPIO Led
+    	/* Init GPIO module */
+   	GPIO_Ctrl_InitLEDPin();	
    
     	/*
      	* Prepare for the MU Interrupt
@@ -237,11 +242,11 @@ int main(void)
     	NVIC_SetPriority(BOARD_MU_IRQ_NUM, APP_MU_IRQ_PRIORITY);
     	NVIC_EnableIRQ(BOARD_MU_IRQ_NUM);
 
-    	/* Create a Command task. */
+    	/* Create a Command task */
     	if (!(pdPASS == xTaskCreate(commandTask, "Command Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL)))
     		goto err;
 	
-	/* Create a Heartbeat task. */	 
+	/* Create a Heartbeat task */	 
     	if (!(pdPASS == xTaskCreate(heartBeatTask, "Heartbeat Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, NULL)))
     		goto err;
 	
