@@ -46,10 +46,10 @@
 
 typedef struct _iaq_data
 {
-    uint8_t 	status;			/*!<  */
-    uint16_t 	CO2prediction;		/*!<  */
-    uint32_t 	resistance;		/*!<  */
-    uint16_t 	TVOCprediction;		/*!<  */
+    uint8_t 	status;			/*!< Status */
+    uint16_t 	CO2prediction;		/*!< CO2prediction */
+    uint32_t 	resistance;		/*!< resistance */
+    uint16_t 	TVOCprediction;		/*!< TVOCprediction */
 } iaq_data_t;
 
 

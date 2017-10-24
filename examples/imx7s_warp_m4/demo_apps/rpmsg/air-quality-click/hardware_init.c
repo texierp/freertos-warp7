@@ -50,8 +50,8 @@ void hardware_init(void)
     CCM_ControlGate(CCM, BOARD_MU_CCM_CCGR, ccmClockNeededRun);
     
     RDC_SetPdapAccess(RDC, BOARD_GPIO_LED_RDC_PDAP, 
-    			(3 << (BOARD_DOMAIN_ID * 2)) | 0x2,	/* perm = [0|0|0|0|1|1|1|1] */ 
-    			true,					/* SREQ */
+    			0xff,	/* perm = [0|0|0|0|1|1|1|1] */ 
+    			false,					/* SREQ */
     			false);  
 
     /* Enable gpio clock gate */
