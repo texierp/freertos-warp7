@@ -53,11 +53,12 @@
 #define APP_MU_IRQ_PRIORITY 3
 
 /* Globals */
-static char buffer[512]; /* Each RPMSG buffer can carry less than 512 payload */
-static iaq_data_t iaqData;
+static char buffer[512]; 	/* Each RPMSG buffer can carry less than 512 payload */
+static iaq_data_t iaqData;	/* iAQ Data structure */
 
 static void readFromSensor()
 {
+	/* Get Values from sensor */
 	IAQ_ReadData(&iaqData);
 }
 
@@ -95,7 +96,7 @@ static void GPIO_LED_Toggle(bool value)
 static void heartBeatTask(void *pvParameters)
 {
 	for (;;) {
-		readFromSensor();
+		//readFromSensor();
      		vTaskDelay(1000);
      	}
 }

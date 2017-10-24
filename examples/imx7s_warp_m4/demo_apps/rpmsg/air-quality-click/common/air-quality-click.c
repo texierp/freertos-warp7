@@ -7,8 +7,8 @@ bool IAQ_ReadData(iaq_data_t *val)
     uint8_t rxBuffer[IAQCORE_DATA_SIZE];
     uint8_t cmdBuffer[2];
 
-    cmdBuffer[0] = 0x5A << 1;
-    cmdBuffer[1] = (0x5A << 1) + 1;
+    cmdBuffer[0] = IAQCORE_ADDRESS << 1;
+    cmdBuffer[1] = (IAQCORE_ADDRESS << 1) + 1;
 
     if (!I2C_MasterReceiveDataPolling(BOARD_I2C_BASEADDR, cmdBuffer, 2, rxBuffer, IAQCORE_DATA_SIZE))
         return false;
