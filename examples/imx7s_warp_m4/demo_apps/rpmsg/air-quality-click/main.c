@@ -53,6 +53,7 @@
 /* Globals */
 static char buffer[512]; 	/* Each RPMSG buffer can carry less than 512 payload */
 static iaq_data_t iaqData;	/* iAQ Data structure */
+SemaphoreHandle_t i2cMutex = NULL;
 
 /*!
  * @brief read data from i2c sensor (iAQ)
@@ -60,7 +61,13 @@ static iaq_data_t iaqData;	/* iAQ Data structure */
 static void readFromSensor()
 {
 	/* Get Values from sensor */
-	IAQ_ReadData(&iaqData);
+	
+	if( xSemaphoreTake( i2cMutex, ( TickType_t ) 10 ) == pdTRUE )
+        {
+		if ( !IAQ_ReadData( &iaqData ) )
+			PRINTF("Reading problem ... %s\n");
+		xSemaphoreGive( i2cMutex );
+        }
 }
 
 /*!
@@ -230,6 +237,8 @@ int main(void)
     	i2cInitConfig.clockRate = get_i2c_clock_freq(BOARD_I2C_BASEADDR);
     	I2C_Init(BOARD_I2C_BASEADDR, &i2cInitConfig);
     	I2C_Enable(BOARD_I2C_BASEADDR);
+    	
+    	i2cMutex = xSemaphoreCreateMutex();
     	
     	/* Init GPIO module */
    	GPIO_Ctrl_InitLEDPin();	
