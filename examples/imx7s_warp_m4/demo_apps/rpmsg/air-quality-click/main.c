@@ -103,7 +103,7 @@ static void GPIO_LED_Toggle(bool value)
 #endif
 }
 
-static void heartBeatTask(void *pvParameters)
+static void iaqDataTask(void *pvParameters)
 {
 	for (;;) {
 		readFromSensor();
@@ -259,7 +259,7 @@ int main(void)
     		goto err;
 	
 	/* Create a iaqData task */	 
-    	if (!(pdPASS == xTaskCreate(heartBeatTask, "iaqData Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL)))
+    	if (!(pdPASS == xTaskCreate(iaqDataTask, "iaqData Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL)))
     		goto err;
 	
 	PRINTF("\r\n== GLMF Demo Started ==\r\n");
