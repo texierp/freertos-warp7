@@ -116,16 +116,24 @@ static void iaqDataTask(void *pvParameters)
  */
 static void commandTask(void *pvParameters)
 {
+	// Pour vérifier la valeur de retour
     	int result;
+    	// Remote Device
     	struct remote_device *rdev = NULL;
+    	// Channel RPMSG
     	struct rpmsg_channel *app_chnl = NULL;
+    	// Buffer de réception
     	void *rx_buf;
-    	int len;
-    	unsigned long src;
+    	// Buffer de transmission
     	void *tx_buf;
+    	// Gestion de la longueur
+    	int len;
+    	unsigned long src;    	
     	unsigned long size;
     	char command[20];
+    	// Gestion de la valeur de la GPIO
     	int wantedValue = 0;
+    	// Gestion pour la gestion de commande
     	int isValid = false;   	
     	
     	// Structure du capteur iAQ
@@ -170,7 +178,7 @@ static void commandTask(void *pvParameters)
 				switch (buffer[0]) 
 				{    		
 					case '!': 			
-						// On analyse la commande
+						// On analyse la commande de set
 						sscanf(buffer, "!%[^:\n]:%d", command, &wantedValue);
 
 						// On regarde si la commande est valide
@@ -181,7 +189,7 @@ static void commandTask(void *pvParameters)
 						} 
 						else  isValid=false;
 		
-						// On prépare le message + la longueur
+						// On formate le message + la longueur
 						if (isValid) {			
 							len = snprintf(buffer, sizeof(buffer), "%s:ok\n", command);
 						} else {
@@ -190,7 +198,7 @@ static void commandTask(void *pvParameters)
 						break;
 				
 					case '?':
-						// On analyse la commande
+						// On analyse la commande de get
 						sscanf(buffer, "?%s", command);
 						if (0 == strcmp(command, "getAirQuality")) 
 						{	
