@@ -50,13 +50,12 @@
  */
 #define APP_MU_IRQ_PRIORITY 3
 
-/* Each RPMSG buffer can carry less than 512 payload */
-static char buffer[512]; 	
-/* iAQ Data structure */
+// Each RPMSG buffer can carry less than 512 payload
+static char buffer[512]; 
 
-SemaphoreHandle_t i2cMutex = NULL;
+// 
 SemaphoreHandle_t thMutex = NULL;
-
+//
 QueueHandle_t xQueueIAQ;
 
 /*!
@@ -65,7 +64,7 @@ QueueHandle_t xQueueIAQ;
 static void GPIO_Ctrl_InitLEDPin(void)
 {
 #ifdef BOARD_GPIO_LED_CONFIG
-    	/* GPIO module initialize, configure "LED" as output and drive the output level high */
+    	// GPIO module initialize, configure "LED" as output and drive the output level high
     	gpio_init_config_t LEDInitConfig = 
    	 {
 		.pin = BOARD_GPIO_LED_CONFIG->pin,		// Pin number
@@ -82,7 +81,7 @@ static void GPIO_Ctrl_InitLEDPin(void)
 /*!
  * @brief Toggle LED
  */
-static void GPIO_LED_Toggle(bool value)
+static void setLED(bool value)
 {
 #ifdef BOARD_GPIO_LED_CONFIG
     	RDC_SEMAPHORE_Lock(BOARD_GPIO_LED_RDC_PDAP);
@@ -95,23 +94,20 @@ static void GPIO_LED_Toggle(bool value)
 
 static void iaqDataTask(void *pvParameters)
 {
+	// Structure du capteur iAQ
 	iaq_data_t iaqData;
 	
-	for (;;) {
-	
-		// Queue Creation
-    		xQueueIAQ = xQueueCreate( 10, sizeof( iaq_data_t ) );    
-    		if( xQueueIAQ == 0 )
-		{
-			// Failed to create the queue.
-		}	
-				
+	while (1) {
+			
+		// On récupère la donnée
 		if ( !IAQ_ReadData( &iaqData ) )
 			PRINTF("Reading problem ... %s\n");
-			
+		// On envoie la donnée dans la Queue
 		if ( !xQueueSend( xQueueIAQ, &iaqData, 0 )) {
         		PRINTF("Failed to send item to queue ...\n");
 		}
+		// On temporise 100ms
+		vTaskDelay(100);
      	}
 }
 
@@ -132,37 +128,40 @@ static void commandTask(void *pvParameters)
     	int wantedValue = 0;
     	int isValid = false;   	
     	
+    	// Structure du capteur iAQ
 	iaq_data_t iaqData;
 	
-    	/* RPMSG Init as REMOTE */
-    	result = rpmsg_rtos_init(0, &rdev, RPMSG_MASTER, &app_chnl);
+    	// On initialise RPMSG en tant que 'Remote' => (RPMSG_MASTER représente le cortex A7)
+    	result = rpmsg_rtos_init(0, &rdev, RPMSG_MASTER, &app_chnl); 
     	assert(result == 0);
 
+	// On affiche sur la sortie UART la confirmation de la création du channel
     	PRINTF("Name service handshake is done, M4 has setup a rpmsg channel [%d ---> %d]\r\n", 
     											app_chnl->src, 
     											app_chnl->dst);
 
-	for (;;)
+	while (1)
     	{   	
     		if( xQueueIAQ != 0 )
     		{
-        		if( !xQueueReceive( xQueueIAQ, &( iaqData ), ( TickType_t ) 10 ) ) {
-				PRINTF("Failed to receive item ...\n");
+    			// On récupère la structure du capteur iAQ
+        		if( !xQueueReceive( xQueueIAQ, &iaqData, 10 ) ) {
+				PRINTF("Failed to receive item from Queue ...\n");
 			}
     		}
     		
-        	/* Get RPMsg rx buffer with message */
+        	// Récupération du message venant du cortex A7
         	result = rpmsg_rtos_recv_nocopy(app_chnl->rp_ept, &rx_buf, &len, &src, 0xFFFFFFFF);
         	assert(result == 0);
 
-        	/* Copy string from RPMsg rx buffer */
+        	// On copie le buffer de reception dans le buffer de traitement
         	assert(len < sizeof(buffer));
         	memcpy(buffer, rx_buf, len);
-        	/* End string by '\0' */
+        	// End string by '\0'
         	buffer[len] = 0; 
         	
         	// Take Mutex
-        	if( xSemaphoreTake( thMutex, ( TickType_t ) 10 ) == pdTRUE )
+        	if( xSemaphoreTake( thMutex, 10 ) == pdTRUE )
         	{
 			if ((len == 2) && (buffer[0] == 0xd) && (buffer[1] == 0xa))
 		    		PRINTF("Received but not handled\r\n");
@@ -171,18 +170,18 @@ static void commandTask(void *pvParameters)
 				switch (buffer[0]) 
 				{    		
 					case '!': 			
-						// Get Arg from Cortex A7 
+						// On analyse la commande
 						sscanf(buffer, "!%[^:\n]:%d", command, &wantedValue);
 
-						// Check if command is valid
+						// On regarde si la commande est valide
 						if (0 == strcmp(command, "out_LED")) 
 						{
-							GPIO_LED_Toggle(wantedValue);	
+							setLED(wantedValue);	
 							isValid=true;
 						} 
 						else  isValid=false;
 		
-						// Update Buffer
+						// On prépare le message + la longueur
 						if (isValid) {			
 							len = snprintf(buffer, sizeof(buffer), "%s:ok\n", command);
 						} else {
@@ -191,7 +190,7 @@ static void commandTask(void *pvParameters)
 						break;
 				
 					case '?':
-						// Get command
+						// On analyse la commande
 						sscanf(buffer, "?%s", command);
 						if (0 == strcmp(command, "getAirQuality")) 
 						{	
@@ -216,12 +215,12 @@ static void commandTask(void *pvParameters)
 						break;
 				}
 			}
-			/* Allocates the tx buffer for message payload */
+			// On alloue le buffer de transmission pour envoyer notre message
 			tx_buf = rpmsg_rtos_alloc_tx_buffer(app_chnl->rp_ept, &size);
 			assert(tx_buf);		
-			/* Copy string to RPMsg tx buffer */
+			// On copie le buffer de traitement dans celui-ci
 			memcpy(tx_buf, buffer, len);
-			/* Send buffer to Cortex A7 */
+			// On envoie vers le cortex A7 !
 			result = rpmsg_rtos_send_nocopy(app_chnl->rp_ept, tx_buf, len, src);
 			assert(result == 0);	
 			
@@ -229,7 +228,7 @@ static void commandTask(void *pvParameters)
 			xSemaphoreGive( thMutex );			
 		}
 		
-		/* Release held RPMsg rx buffer */
+		// Release held RPMsg rx buffer 
 		result = rpmsg_rtos_recv_nocopy_free(app_chnl->rp_ept, rx_buf);
 		assert(result == 0);
     	}
@@ -248,22 +247,27 @@ void BOARD_MU_HANDLER(void)
 
 int main(void)
 {
-	/* Init RDC, Clock, memory */
+	// Init RDC, Clock, memory
     	hardware_init();
     	
-    	/* Configuration */ 
+    	// Configuration 
     	i2c_init_config_t i2cInitConfig = {
 		.baudRate     = 100000u,
 		.slaveAddress = 0x00
     	};
-    	
+    	// Init clock
     	i2cInitConfig.clockRate = get_i2c_clock_freq(BOARD_I2C_BASEADDR);
+    	// Init i2c
     	I2C_Init(BOARD_I2C_BASEADDR, &i2cInitConfig);
+    	// Enable i2c
     	I2C_Enable(BOARD_I2C_BASEADDR);
     	
-    	i2cMutex = xSemaphoreCreateMutex();
+	// Queue Creation
+    	xQueueIAQ = xQueueCreate( 10, sizeof( iaq_data_t ) );    
+    	if( xQueueIAQ == 0 )
+		goto err;	
     	
-    	/* Init GPIO module */
+    	// Init GPIO module 
    	GPIO_Ctrl_InitLEDPin();	
    
     	/*
@@ -274,22 +278,23 @@ int main(void)
     	NVIC_SetPriority(BOARD_MU_IRQ_NUM, APP_MU_IRQ_PRIORITY);
     	NVIC_EnableIRQ(BOARD_MU_IRQ_NUM);
 
-    	/* Create a Command task */
+    	// Create a Command task
     	if (!(pdPASS == xTaskCreate(commandTask, "Command Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, NULL)))
     		goto err;
 	
-	/* Create a iaqData task */	 
+	// Create a iaqData task 	 
     	if (!(pdPASS == xTaskCreate(iaqDataTask, "iaqData Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL)))
     		goto err;
 	
+	// Affichage sur la liaison série
 	PRINTF("\r\n== GLMF Demo Started ==\r\n");
 	
-    	/* Start FreeRTOS scheduler. */
+    	// Start FreeRTOS scheduler
     	vTaskStartScheduler();
     	
 err:
 	PRINTF("Error ...\n");
-    	/* Should never reach this point. */
+    	// Should never reach this point
     	while (true);
 }
 
