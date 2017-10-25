@@ -33,10 +33,8 @@
 #include "debug_console_imx.h"
 #include "i2c_imx.h"
 
-#define EEPROM_ADDRESS    (0x50)
-
 // Device
-#define IAQCORE_ADDRESS				(0x50)
+#define IAQCORE_ADDRESS				(0x5A)
 #define IAQCORE_DATA_SIZE			9
 // Status codes
 #define IAQCORE_STATUS_OK			(0x00)
