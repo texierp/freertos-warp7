@@ -226,12 +226,12 @@ static void commandTask(void *pvParameters)
 			assert(result == 0);	
 			
 			// Release Mutex
-			xSemaphoreGive( thMutex );
-			
-			/* Release held RPMsg rx buffer */
-			result = rpmsg_rtos_recv_nocopy_free(app_chnl->rp_ept, rx_buf);
-			assert(result == 0);			
+			xSemaphoreGive( thMutex );			
 		}
+		
+		/* Release held RPMsg rx buffer */
+		result = rpmsg_rtos_recv_nocopy_free(app_chnl->rp_ept, rx_buf);
+		assert(result == 0);
     	}
 }
 
