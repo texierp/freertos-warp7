@@ -60,8 +60,7 @@ SemaphoreHandle_t i2cMutex = NULL;
  */
 static void readFromSensor()
 {
-	/* Get Values from sensor */
-	
+	/* Get Values from sensor */	
 	if( xSemaphoreTake( i2cMutex, ( TickType_t ) 10 ) == pdTRUE )
         {
 		if ( !IAQ_ReadData( &iaqData ) )
@@ -107,8 +106,8 @@ static void GPIO_LED_Toggle(bool value)
 static void heartBeatTask(void *pvParameters)
 {
 	for (;;) {
-		//readFromSensor();
-     		vTaskDelay(1000);
+		readFromSensor();
+     		vTaskDelay(500);
      	}
 }
 
@@ -152,9 +151,7 @@ static void commandTask(void *pvParameters)
         	if ((len == 2) && (buffer[0] == 0xd) && (buffer[1] == 0xa))
             		PRINTF("Received but not handled\r\n");
         	else
-        	{
-        		PRINTF("Get Message From Master Side : \"%s\" [len : %d]\r\n", buffer, len);
-        		
+        	{       		
         		switch (buffer[0]) 
         		{    		
 				case '!':        	
@@ -165,7 +162,8 @@ static void commandTask(void *pvParameters)
 					sscanf(buffer, "!%[^:\n]:%d", command, &wantedValue);
 
 					/* Check if command is valid */
-					if (0 == strcmp(command, "out_LED")) {
+					if (0 == strcmp(command, "out_LED")) 
+					{
 						GPIO_LED_Toggle(wantedValue);	
 						isValid=true;
 					} 
@@ -182,13 +180,19 @@ static void commandTask(void *pvParameters)
 				
 				case '?':
 					sscanf(buffer, "?%s", command);
-					readFromSensor();
-					if (0 == strcmp(command, "co2")) 
-						len = snprintf(buffer, sizeof(buffer), "%d", (uint16_t)iaqData.CO2prediction);		// CO2 Prediction (ppm)
-					else if (0 == strcmp(command, "tvoc")) 
-						len = snprintf(buffer, sizeof(buffer), "%d", (uint16_t)iaqData.TVOCprediction);		// TVOC prediction (ppb)
-					else if (0 == strcmp(command, "status")) 	
-						len = snprintf(buffer, sizeof(buffer), "%d", (uint8_t)iaqData.status);			// Status (RUNNING, BUSY, ...)
+					if (0 == strcmp(command, "getAirQuality")) 
+					{
+						// CO2 Prediction (ppm)	
+						buffer[0] = iaqData.CO2prediction >> 8;
+						buffer[1] = iaqData.CO2prediction & 0x00FF;
+						// TVOC prediction (ppb)
+						buffer[2] = iaqData.TVOCprediction >> 8;
+						buffer[3] = iaqData.TVOCprediction & 0x00FF;
+						// Status (RUNNING, BUSY, ...)
+						buffer[4] = iaqData.status;
+						// Lenght
+						len = 5;							
+					}		
 					else
 						len = snprintf(buffer, sizeof(buffer), "%s:error\n", command);				// Error
 					break;
@@ -197,7 +201,6 @@ static void commandTask(void *pvParameters)
 					break;
 		        }
         	}
-        
 		/* Allocates the tx buffer for message payload */
 		tx_buf = rpmsg_rtos_alloc_tx_buffer(app_chnl->rp_ept, &size);
 		assert(tx_buf);		
@@ -252,14 +255,14 @@ int main(void)
     	NVIC_EnableIRQ(BOARD_MU_IRQ_NUM);
 
     	/* Create a Command task */
-    	if (!(pdPASS == xTaskCreate(commandTask, "Command Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL)))
+    	if (!(pdPASS == xTaskCreate(commandTask, "Command Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, NULL)))
     		goto err;
 	
-	/* Create a Heartbeat task */	 
-    	if (!(pdPASS == xTaskCreate(heartBeatTask, "Heartbeat Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, NULL)))
+	/* Create a iaqData task */	 
+    	if (!(pdPASS == xTaskCreate(heartBeatTask, "iaqData Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL)))
     		goto err;
 	
-	PRINTF("\r\n== GLMF Demo ==\r\n");
+	PRINTF("\r\n== GLMF Demo Started ==\r\n");
 	
     	/* Start FreeRTOS scheduler. */
     	vTaskStartScheduler();
