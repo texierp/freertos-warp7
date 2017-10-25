@@ -50,24 +50,14 @@
  */
 #define APP_MU_IRQ_PRIORITY 3
 
-/* Globals */
-static char buffer[512]; 	/* Each RPMSG buffer can carry less than 512 payload */
-static iaq_data_t iaqData;	/* iAQ Data structure */
-SemaphoreHandle_t i2cMutex = NULL;
+/* Each RPMSG buffer can carry less than 512 payload */
+static char buffer[512]; 	
+/* iAQ Data structure */
 
-/*!
- * @brief read data from i2c sensor (iAQ)
- */
-static void readFromSensor()
-{
-	/* Get Values from sensor */	
-	if( xSemaphoreTake( i2cMutex, ( TickType_t ) 10 ) == pdTRUE )
-        {
-		if ( !IAQ_ReadData( &iaqData ) )
-			PRINTF("Reading problem ... %s\n");
-		xSemaphoreGive( i2cMutex );
-        }
-}
+SemaphoreHandle_t i2cMutex = NULL;
+SemaphoreHandle_t thMutex = NULL;
+
+QueueHandle_t xQueueIAQ;
 
 /*!
  * @brief Init GPIO LED
@@ -105,9 +95,23 @@ static void GPIO_LED_Toggle(bool value)
 
 static void iaqDataTask(void *pvParameters)
 {
+	iaq_data_t iaqData;
+	
 	for (;;) {
-		readFromSensor();
-     		vTaskDelay(500);
+	
+		// Queue Creation
+    		xQueueIAQ = xQueueCreate( 10, sizeof( iaq_data_t ) );    
+    		if( xQueueIAQ == 0 )
+		{
+			// Failed to create the queue.
+		}	
+				
+		if ( !IAQ_ReadData( &iaqData ) )
+			PRINTF("Reading problem ... %s\n");
+			
+		if ( !xQueueSend( xQueueIAQ, &iaqData, 0 )) {
+        		PRINTF("Failed to send item to queue ...\n");
+		}
      	}
 }
 
@@ -125,9 +129,11 @@ static void commandTask(void *pvParameters)
     	void *tx_buf;
     	unsigned long size;
     	char command[20];
-    	int wantedValue;
-    	int isValid;   	
-
+    	int wantedValue = 0;
+    	int isValid = false;   	
+    	
+	iaq_data_t iaqData;
+	
     	/* RPMSG Init as REMOTE */
     	result = rpmsg_rtos_init(0, &rdev, RPMSG_MASTER, &app_chnl);
     	assert(result == 0);
@@ -137,7 +143,14 @@ static void commandTask(void *pvParameters)
     											app_chnl->dst);
 
 	for (;;)
-    	{
+    	{   	
+    		if( xQueueIAQ != 0 )
+    		{
+        		if( !xQueueReceive( xQueueIAQ, &( iaqData ), ( TickType_t ) 10 ) ) {
+				PRINTF("Failed to receive item ...\n");
+			}
+    		}
+    		
         	/* Get RPMsg rx buffer with message */
         	result = rpmsg_rtos_recv_nocopy(app_chnl->rp_ept, &rx_buf, &len, &src, 0xFFFFFFFF);
         	assert(result == 0);
@@ -147,43 +160,41 @@ static void commandTask(void *pvParameters)
         	memcpy(buffer, rx_buf, len);
         	/* End string by '\0' */
         	buffer[len] = 0; 
+        	
+        	// Take Mutex
+        	if( xSemaphoreTake( thMutex, ( TickType_t ) 10 ) == pdTRUE )
+        	{
+			if ((len == 2) && (buffer[0] == 0xd) && (buffer[1] == 0xa))
+		    		PRINTF("Received but not handled\r\n");
+			else
+			{       		
+				switch (buffer[0]) 
+				{    		
+					case '!': 			
+						// Get Arg from Cortex A7 
+						sscanf(buffer, "!%[^:\n]:%d", command, &wantedValue);
 
-        	if ((len == 2) && (buffer[0] == 0xd) && (buffer[1] == 0xa))
-            		PRINTF("Received but not handled\r\n");
-        	else
-        	{       		
-        		switch (buffer[0]) 
-        		{    		
-				case '!':        	
-					/* Force isValid to false */
-					isValid=false;
-			
-					/* Get Arg from Cortex A7 */
-					sscanf(buffer, "!%[^:\n]:%d", command, &wantedValue);
-
-					/* Check if command is valid */
-					if (0 == strcmp(command, "out_LED")) 
-					{
-						GPIO_LED_Toggle(wantedValue);	
-						isValid=true;
-					} 
-					else 
-						isValid=false;
+						// Check if command is valid
+						if (0 == strcmp(command, "out_LED")) 
+						{
+							GPIO_LED_Toggle(wantedValue);	
+							isValid=true;
+						} 
+						else  isValid=false;
 		
-					/* Update Buffer */
-					if (isValid) {			
-						len = snprintf(buffer, sizeof(buffer), "%s:ok\n", command);
-					} else {
-						len = snprintf(buffer, sizeof(buffer), "%s:error\n", command);
-					}
-					break;
+						// Update Buffer
+						if (isValid) {			
+							len = snprintf(buffer, sizeof(buffer), "%s:ok\n", command);
+						} else {
+							len = snprintf(buffer, sizeof(buffer), "%s:error\n", command);
+						}
+						break;
 				
-				case '?':
-					sscanf(buffer, "?%s", command);
-					if (0 == strcmp(command, "getAirQuality")) 
-					{
-						if( xSemaphoreTake( i2cMutex, ( TickType_t ) 10 ) == pdTRUE )
-        					{		
+					case '?':
+						// Get command
+						sscanf(buffer, "?%s", command);
+						if (0 == strcmp(command, "getAirQuality")) 
+						{	
 							// CO2 Prediction (ppm)	
 							buffer[0] = iaqData.CO2prediction >> 8;
 							buffer[1] = iaqData.CO2prediction & 0x00FF;
@@ -196,28 +207,31 @@ static void commandTask(void *pvParameters)
 							buffer[5] = '\n';
 							// Lenght
 							len = 6;	
-							xSemaphoreGive( i2cMutex );
-						}						
-					}		
-					else
-						len = snprintf(buffer, sizeof(buffer), "%s:error\n", command);	// Error
-					break;
-			    	default:
-					len = snprintf(buffer, sizeof(buffer), "%s:wrong command\n", command);
-					break;
-		        }
-        	}
-		/* Allocates the tx buffer for message payload */
-		tx_buf = rpmsg_rtos_alloc_tx_buffer(app_chnl->rp_ept, &size);
-		assert(tx_buf);		
-		/* Copy string to RPMsg tx buffer */
-		memcpy(tx_buf, buffer, len);
-		/* Send buffer to Cortex A7 */
-		result = rpmsg_rtos_send_nocopy(app_chnl->rp_ept, tx_buf, len, src);
-		assert(result == 0);	
-		/* Release held RPMsg rx buffer */
-		result = rpmsg_rtos_recv_nocopy_free(app_chnl->rp_ept, rx_buf);
-		assert(result == 0);
+						}		
+						else
+							len = snprintf(buffer, sizeof(buffer), "%s:error\n", command);	// Error
+						break;
+				    	default:
+						len = snprintf(buffer, sizeof(buffer), "%s:wrong command\n", command);
+						break;
+				}
+			}
+			/* Allocates the tx buffer for message payload */
+			tx_buf = rpmsg_rtos_alloc_tx_buffer(app_chnl->rp_ept, &size);
+			assert(tx_buf);		
+			/* Copy string to RPMsg tx buffer */
+			memcpy(tx_buf, buffer, len);
+			/* Send buffer to Cortex A7 */
+			result = rpmsg_rtos_send_nocopy(app_chnl->rp_ept, tx_buf, len, src);
+			assert(result == 0);	
+			
+			// Release Mutex
+			xSemaphoreGive( thMutex );
+			
+			/* Release held RPMsg rx buffer */
+			result = rpmsg_rtos_recv_nocopy_free(app_chnl->rp_ept, rx_buf);
+			assert(result == 0);			
+		}
     	}
 }
 
@@ -234,7 +248,7 @@ void BOARD_MU_HANDLER(void)
 
 int main(void)
 {
-	/* Init RDC, Clock */
+	/* Init RDC, Clock, memory */
     	hardware_init();
     	
     	/* Configuration */ 
