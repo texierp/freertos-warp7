@@ -182,19 +182,25 @@ static void commandTask(void *pvParameters)
 					sscanf(buffer, "?%s", command);
 					if (0 == strcmp(command, "getAirQuality")) 
 					{
-						// CO2 Prediction (ppm)	
-						buffer[0] = iaqData.CO2prediction >> 8;
-						buffer[1] = iaqData.CO2prediction & 0x00FF;
-						// TVOC prediction (ppb)
-						buffer[2] = iaqData.TVOCprediction >> 8;
-						buffer[3] = iaqData.TVOCprediction & 0x00FF;
-						// Status (RUNNING, BUSY, ...)
-						buffer[4] = iaqData.status;
-						// Lenght
-						len = 5;							
+						if( xSemaphoreTake( i2cMutex, ( TickType_t ) 10 ) == pdTRUE )
+        					{		
+							// CO2 Prediction (ppm)	
+							buffer[0] = iaqData.CO2prediction >> 8;
+							buffer[1] = iaqData.CO2prediction & 0x00FF;
+							// TVOC prediction (ppb)
+							buffer[2] = iaqData.TVOCprediction >> 8;
+							buffer[3] = iaqData.TVOCprediction & 0x00FF;
+							// Status (RUNNING, BUSY, ...)
+							buffer[4] = iaqData.status;
+							// \n
+							buffer[5] = '\n';
+							// Lenght
+							len = 6;	
+							xSemaphoreGive( i2cMutex );
+						}						
 					}		
 					else
-						len = snprintf(buffer, sizeof(buffer), "%s:error\n", command);				// Error
+						len = snprintf(buffer, sizeof(buffer), "%s:error\n", command);	// Error
 					break;
 			    	default:
 					len = snprintf(buffer, sizeof(buffer), "%s:wrong command\n", command);
