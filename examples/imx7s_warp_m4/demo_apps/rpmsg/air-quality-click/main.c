@@ -226,8 +226,8 @@ int main(void)
     	
     	// Configuration 
     	i2c_init_config_t i2cInitConfig = {
-		.baudRate     = 100000u,
-		.slaveAddress = 0x00
+		.baudRate     = 100000u,	// Baud rate pour communiquer avec le composant iAQ
+		.slaveAddress = 0x00		// Notre adresse, pas celle de notre slave
     	};
     	// Init clock
     	i2cInitConfig.clockRate = get_i2c_clock_freq(BOARD_I2C_BASEADDR);
