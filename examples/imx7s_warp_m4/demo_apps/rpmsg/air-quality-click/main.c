@@ -1,33 +1,3 @@
-/*
- * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * o Redistributions of source code must retain the above copyright notice, this list
- *   of conditions and the following disclaimer.
- *
- * o Redistributions in binary form must reproduce the above copyright notice, this
- *   list of conditions and the following disclaimer in the documentation and/or
- *   other materials provided with the distribution.
- *
- * o Neither the name of Freescale Semiconductor, Inc. nor the names of its
- *   contributors may be used to endorse or promote products derived from this
- *   software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
 #include "rpmsg/rpmsg_rtos.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -42,7 +12,6 @@
 #include "queue.h"
 #include "air-quality-click.h"
 
-
 #define APP_TASK_STACK_SIZE 256
 
 /*
@@ -53,11 +22,12 @@
 // Each RPMSG buffer can carry less than 512 payload
 static char buffer[512]; 
 
-// 
+// Déclaration du Mutex
 SemaphoreHandle_t thMutex = NULL;
-//
-QueueHandle_t xQueueIAQ;
 
+// Structure du capteur iAQ
+iaq_data_t iaqData;
+	
 /*!
  * @brief Init GPIO LED
  */
@@ -92,27 +62,25 @@ static void setLED(bool value)
 #endif
 }
 
+/*!
+ * @brief Tâche récupération des données capteur
+ */
 static void iaqDataTask(void *pvParameters)
-{
-	// Structure du capteur iAQ
-	iaq_data_t iaqData;
-	
+{	
+	PRINTF("Task %s started\n", "iaqDataTask");
 	while (1) {
 			
 		// On récupère la donnée
 		if ( !IAQ_ReadData( &iaqData ) )
-			PRINTF("Reading problem ... %s\n");
-		// On envoie la donnée dans la Queue
-		if ( !xQueueSend( xQueueIAQ, &iaqData, 0 )) {
-        		PRINTF("Failed to send item to queue ...\n");
-		}
-		// On temporise 100ms
-		vTaskDelay(100);
+			PRINTF("Reading problem ... %s\n");			
+
+		// On temporise 1500ms
+		vTaskDelay(1500);
      	}
 }
 
 /*!
- * @brief A basic RPMSG task
+ * @brief Tâche RPMSG
  */
 static void commandTask(void *pvParameters)
 {
@@ -128,16 +96,16 @@ static void commandTask(void *pvParameters)
     	void *tx_buf;
     	// Gestion de la longueur
     	int len;
-    	unsigned long src;    	
+    	// Pour la gestion du endpoint (cortex A7)
+    	unsigned long src; 
+    	// Pour la gestion du buffer de transmission   	
     	unsigned long size;
+    	// Pour traiter les commandes provenant du cortex A7
     	char command[20];
     	// Gestion de la valeur de la GPIO
     	int wantedValue = 0;
-    	// Gestion pour la gestion de commande
+    	// Pour la gestion des commandes de 'set'
     	int isValid = false;   	
-    	
-    	// Structure du capteur iAQ
-	iaq_data_t iaqData;
 	
     	// On initialise RPMSG en tant que 'Remote' => (RPMSG_MASTER représente le cortex A7)
     	result = rpmsg_rtos_init(0, &rdev, RPMSG_MASTER, &app_chnl); 
@@ -150,34 +118,26 @@ static void commandTask(void *pvParameters)
 
 	while (1)
     	{   	
-    		if( xQueueIAQ != 0 )
-    		{
-    			// On récupère la structure du capteur iAQ
-        		if( !xQueueReceive( xQueueIAQ, &iaqData, 10 ) ) {
-				PRINTF("Failed to receive item from Queue ...\n");
-			}
-    		}
-    		
-        	// Récupération du message venant du cortex A7
-        	result = rpmsg_rtos_recv_nocopy(app_chnl->rp_ept, &rx_buf, &len, &src, 0xFFFFFFFF);
-        	assert(result == 0);
+    		// Take Mutex
+    		if( xSemaphoreTake( thMutex, 20 ) == pdTRUE )
+        	{  		
+        		// Récupération du message venant du cortex A7
+			result = rpmsg_rtos_recv_nocopy(app_chnl->rp_ept, &rx_buf, &len, &src, 0xFFFFFFFF);
+			assert(result == 0);
 
-        	// On copie le buffer de reception dans le buffer de traitement
-        	assert(len < sizeof(buffer));
-        	memcpy(buffer, rx_buf, len);
-        	// End string by '\0'
-        	buffer[len] = 0; 
-        	
-        	// Take Mutex
-        	if( xSemaphoreTake( thMutex, 10 ) == pdTRUE )
-        	{
+			// On copie le buffer de reception dans le buffer de traitement
+			assert(len < sizeof(buffer));
+			memcpy(buffer, rx_buf, len);
+			// End string by '\0'
+			buffer[len] = 0; 
+        	   	
 			if ((len == 2) && (buffer[0] == 0xd) && (buffer[1] == 0xa))
 		    		PRINTF("Received but not handled\r\n");
 			else
 			{       		
 				switch (buffer[0]) 
-				{    		
-					case '!': 			
+				{    						
+					case '!': 							
 						// On analyse la commande de set
 						sscanf(buffer, "!%[^:\n]:%d", command, &wantedValue);
 
@@ -195,8 +155,7 @@ static void commandTask(void *pvParameters)
 						} else {
 							len = snprintf(buffer, sizeof(buffer), "%s:error\n", command);
 						}
-						break;
-				
+						break;				
 					case '?':
 						// On analyse la commande de get
 						sscanf(buffer, "?%s", command);
@@ -214,11 +173,18 @@ static void commandTask(void *pvParameters)
 							buffer[5] = '\n';
 							// Lenght
 							len = 6;	
+							
+							// Autre moyen d'envoyer la donnée (string complète)
+							//len = snprintf(buffer, sizeof(buffer), "%s:%d.%d.%d\n", command, iaqData.CO2prediction, iaqData.TVOCprediction, iaqData.status);
 						}		
 						else
+						{
+							// Erreur dans la commande -> on formate le message pour le cortex A7					
 							len = snprintf(buffer, sizeof(buffer), "%s:error\n", command);	// Error
+						}							
 						break;
 				    	default:
+				    		// Mauvaise commande -> on formate le message pour le cortex A7
 						len = snprintf(buffer, sizeof(buffer), "%s:wrong command\n", command);
 						break;
 				}
@@ -231,14 +197,14 @@ static void commandTask(void *pvParameters)
 			// On envoie vers le cortex A7 !
 			result = rpmsg_rtos_send_nocopy(app_chnl->rp_ept, tx_buf, len, src);
 			assert(result == 0);	
+				
+			// Release held RPMsg rx buffer 
+			result = rpmsg_rtos_recv_nocopy_free(app_chnl->rp_ept, rx_buf);
+			assert(result == 0);
 			
 			// Release Mutex
 			xSemaphoreGive( thMutex );			
 		}
-		
-		// Release held RPMsg rx buffer 
-		result = rpmsg_rtos_recv_nocopy_free(app_chnl->rp_ept, rx_buf);
-		assert(result == 0);
     	}
 }
 
@@ -260,8 +226,8 @@ int main(void)
     	
     	// Configuration 
     	i2c_init_config_t i2cInitConfig = {
-		.baudRate     = 100000u,
-		.slaveAddress = 0x00
+		.baudRate     = 100000u,	// Baud rate pour communiquer avec le composant iAQ
+		.slaveAddress = 0x00		// Notre adresse, pas celle de notre slave
     	};
     	// Init clock
     	i2cInitConfig.clockRate = get_i2c_clock_freq(BOARD_I2C_BASEADDR);
@@ -270,13 +236,11 @@ int main(void)
     	// Enable i2c
     	I2C_Enable(BOARD_I2C_BASEADDR);
     	
-	// Queue Creation
-    	xQueueIAQ = xQueueCreate( 10, sizeof( iaq_data_t ) );    
-    	if( xQueueIAQ == 0 )
-		goto err;	
-    	
-    	// Init GPIO module 
+    	// On initialise notre module GPIO (pour la gestion de la LES) 
    	GPIO_Ctrl_InitLEDPin();	
+   	
+   	// Création du mutex
+   	thMutex = xSemaphoreCreateMutex();
    
     	/*
      	* Prepare for the MU Interrupt
@@ -285,13 +249,13 @@ int main(void)
     	MU_Init(BOARD_MU_BASE_ADDR);
     	NVIC_SetPriority(BOARD_MU_IRQ_NUM, APP_MU_IRQ_PRIORITY);
     	NVIC_EnableIRQ(BOARD_MU_IRQ_NUM);
-
-    	// Create a Command task
-    	if (!(pdPASS == xTaskCreate(commandTask, "Command Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, NULL)))
-    		goto err;
-	
-	// Create a iaqData task 	 
+    	
+    	// Création de la tâche iAQ pour la récupération des données du capteur i2c	 
     	if (!(pdPASS == xTaskCreate(iaqDataTask, "iaqData Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL)))
+    		goto err;
+
+    	// Creation de la tâche pour la gestion de la communication (rpmsg) 
+    	if (!(pdPASS == xTaskCreate(commandTask, "Command Task", APP_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, NULL)))
     		goto err;
 	
 	// Affichage sur la liaison série
